@@ -1,14 +1,21 @@
-import { createClient } from '@libsql/client'
+// The "web" build talks to Turso over HTTP in plain JavaScript. The default
+// build also loads a native SQLite binary (for local database files), which
+// Vercel's bundler leaves out, crashing the serverless function on load.
+import { createClient } from '@libsql/client/web'
+import { requireEnv } from './config.js'
 
-const url = process.env.TURSO_DATABASE_URL
-const authToken = process.env.TURSO_AUTH_TOKEN
+let client
 
-if (!url) {
-  throw new Error('TURSO_DATABASE_URL is not set. Add it to .env (see .env.example).')
+// Created on first use, so a missing variable becomes a clear error response
+// rather than a crash at startup. The client and its token only ever live on
+// the server.
+function db() {
+  client ??= createClient({
+    url: requireEnv('TURSO_DATABASE_URL'),
+    authToken: requireEnv('TURSO_AUTH_TOKEN'),
+  })
+  return client
 }
-
-// This client (and the token it holds) only ever lives on the server.
-const db = createClient({ url, authToken })
 
 let schemaReady
 
@@ -24,7 +31,7 @@ export function ensureSchema() {
 }
 
 async function migrate() {
-  await db.batch(
+  await db().batch(
     [
       `CREATE TABLE IF NOT EXISTS awards (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +62,7 @@ function toAward(row) {
 // user can never read or change another user's awards.
 
 export async function listAwards(userId) {
-  const { rows } = await db.execute({
+  const { rows } = await db().execute({
     sql: `SELECT id, name, count, created_at, updated_at
           FROM awards WHERE user_id = ? ORDER BY created_at DESC, id DESC`,
     args: [userId],
@@ -65,7 +72,7 @@ export async function listAwards(userId) {
 
 export async function createAward(userId, { name, count }) {
   const now = Date.now()
-  const { rows } = await db.execute({
+  const { rows } = await db().execute({
     sql: `INSERT INTO awards (user_id, name, count, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?)
           RETURNING id, name, count, created_at, updated_at`,
@@ -75,7 +82,7 @@ export async function createAward(userId, { name, count }) {
 }
 
 export async function updateAward(userId, id, { name, count }) {
-  const { rows } = await db.execute({
+  const { rows } = await db().execute({
     sql: `UPDATE awards SET name = ?, count = ?, updated_at = ?
           WHERE id = ? AND user_id = ?
           RETURNING id, name, count, created_at, updated_at`,
@@ -85,7 +92,7 @@ export async function updateAward(userId, id, { name, count }) {
 }
 
 export async function deleteAward(userId, id) {
-  const result = await db.execute({
+  const result = await db().execute({
     sql: 'DELETE FROM awards WHERE id = ? AND user_id = ?',
     args: [id, userId],
   })

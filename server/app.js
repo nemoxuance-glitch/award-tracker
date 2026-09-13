@@ -1,5 +1,6 @@
 import express from 'express'
 import { requireUser } from './auth.js'
+import { ConfigError } from './config.js'
 import { createAward, deleteAward, ensureSchema, listAwards, updateAward } from './db.js'
 
 const MAX_NAME_LENGTH = 100
@@ -84,6 +85,9 @@ export function createApp({ staticDir } = {}) {
       return res.status(err.status).json({ error: 'Invalid request.' })
     }
     console.error(err)
+    if (err instanceof ConfigError) {
+      return res.status(500).json({ error: `Server setup problem: ${err.message}` })
+    }
     res.status(500).json({ error: 'Something went wrong on the server. Please try again.' })
   })
 

@@ -74,14 +74,20 @@ request to it. The function uses the same Express app as local development
 
 1. In **Vercel → Project → Settings → Environment Variables**, add all the
    variables from `.env`: the six `VITE_FIREBASE_*` ones **and**
-   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Without the Turso variables,
-   `/api` requests fail with a server error.
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. If one is missing, the app shows
+   "Server setup problem: … is not set on the server." After changing variables,
+   redeploy; Vercel only applies them to new deployments.
 2. In **Firebase → Authentication → Settings → Authorized domains**, add your
    Vercel domain (e.g. `your-app.vercel.app`).
 3. Push to GitHub, or redeploy, so Vercel picks up the changes.
 
 If `https://your-app.vercel.app/api/awards` returns `{"error":"Not signed in."}`,
 the backend is running.
+
+The server uses `@libsql/client/web`, Turso's pure-JavaScript client. Don't
+change it to plain `@libsql/client`: that version loads a native SQLite binary
+that Vercel leaves out of the function, which makes every `/api` request fail
+with `FUNCTION_INVOCATION_FAILED`.
 
 ### "Cross-Origin-Opener-Policy policy would block the window.closed call"
 
