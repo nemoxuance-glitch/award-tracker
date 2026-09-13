@@ -63,6 +63,33 @@ npm start
 ```
 
 `npm start` runs Express, which serves both the API and the built app from `dist/`.
+Use this on hosts that run a Node server (Render, Railway, a VPS).
+
+### Deploying to Vercel
+
+Vercel doesn't run `npm start`. It serves the built React app itself and runs
+`api/index.js` as a serverless function; `vercel.json` sends every `/api/*`
+request to it. The function uses the same Express app as local development
+(`server/app.js`).
+
+1. In **Vercel → Project → Settings → Environment Variables**, add all the
+   variables from `.env`: the six `VITE_FIREBASE_*` ones **and**
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Without the Turso variables,
+   `/api` requests fail with a server error.
+2. In **Firebase → Authentication → Settings → Authorized domains**, add your
+   Vercel domain (e.g. `your-app.vercel.app`).
+3. Push to GitHub, or redeploy, so Vercel picks up the changes.
+
+If `https://your-app.vercel.app/api/awards` returns `{"error":"Not signed in."}`,
+the backend is running.
+
+### "Cross-Origin-Opener-Policy policy would block the window.closed call"
+
+Chrome shows this in the console when you click **Continue with Google**. It's a
+warning, not an error. Google's sign-in page tells the browser to isolate itself
+from the page that opened it. Firebase only uses `window.closed` to notice
+whether you closed the popup, so sign-in still completes. There's no setting in
+this app to change, and you can ignore it.
 
 ## API
 

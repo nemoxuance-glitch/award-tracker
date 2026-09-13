@@ -10,7 +10,20 @@ if (!url) {
 // This client (and the token it holds) only ever lives on the server.
 const db = createClient({ url, authToken })
 
-export async function migrate() {
+let schemaReady
+
+// Creates the table if needed. Runs at most once per server instance (a
+// serverless function has no startup step, so this is called per request and
+// only does real work the first time). A failure is retried on the next call.
+export function ensureSchema() {
+  schemaReady ??= migrate().catch((err) => {
+    schemaReady = undefined
+    throw err
+  })
+  return schemaReady
+}
+
+async function migrate() {
   await db.batch(
     [
       `CREATE TABLE IF NOT EXISTS awards (
